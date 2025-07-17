@@ -1,80 +1,46 @@
-import fs from 'node:fs/promises';
-
-import bodyParser from 'body-parser';
-import express from 'express';
-
-import path from 'path';
-import { fileURLToPath } from 'url';
+const express = require('express');
+const bodyParser = require('body-parser');
+const fs = require('fs');
+const path = require('path');
+const cors = require('cors');
 
 const app = express();
+const PORT = process.env.PORT || 3000;
 
+// Middlewares
+app.use(cors());
 app.use(bodyParser.json());
-app.use(express.static('public'));
 
-app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  next();
+// API routes
+app.get('/meals', (req, res) => {
+  const filePath = path.join(__dirname, 'data', 'meals.json');
+  fs.readFile(filePath, 'utf8', (err, meals) => {
+    if (err) {
+      console.error('Error reading meals.json:', err);
+      res.status(500).json({ error: 'Internal Server Error' });
+    } else {
+      res.json(JSON.parse(meals));
+    }
+  });
 });
 
-app.get('/meals', async (req, res) => {
-
-
-// Needed if using ES modules (you are, since you're using "type": "module")
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-
-  const filePath = path.resolve(__dirname, 'data', 'available-meals.json');
-  const data = await fs.readFile(filePath, 'utf8');
-
-  res.json(JSON.parse(data));
+// Add other routes here as needed
+app.get('/offers', (req, res) => {
+  const filePath = path.join(__dirname, 'data', 'offers.json');
+  fs.readFile(filePath, 'utf8', (err, offers) => {
+    if (err) {
+      console.error('Error reading offers.json:', err);
+      res.status(500).json({ error: 'Internal Server Error' });
+    } else {
+      res.json(JSON.parse(offers));
+    }
+  });
 });
 
-app.post('/orders', async (req, res) => {
-  const orderData = req.body.order;
-
-  if (orderData === null || orderData.items === null || orderData.items.length === 0) {
-    return res
-      .status(400)
-      .json({ message: 'Missing data.' });
-  }
-
-  if (
-    orderData.customer.email === null ||
-    !orderData.customer.email.includes('@') ||
-    orderData.customer.name === null ||
-    orderData.customer.name.trim() === '' ||
-    orderData.customer.street === null ||
-    orderData.customer.street.trim() === '' ||
-    orderData.customer['postal-code'] === null ||
-    orderData.customer['postal-code'].trim() === '' ||
-    orderData.customer.city === null ||
-    orderData.customer.city.trim() === ''
-  ) {
-    return res.status(400).json({
-      message:
-        'Missing data: Email, name, street, postal code or city is missing.',
-    });
-  }
-
-  const newOrder = {
-    ...orderData,
-    id: (Math.random() * 1000).toString(),
-  };
-  const orders = await fs.readFile('./data/orders.json', 'utf8');
-  const allOrders = JSON.parse(orders);
-  allOrders.push(newOrder);
-  await fs.writeFile('./data/orders.json', JSON.stringify(allOrders));
-  res.status(201).json({ message: 'Order created!' });
+// Root route
+app.get('/', (req, res) => {
+  res.send('Delivery app backend is up and running!');
 });
 
-app.use((req, res) => {
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
-
-  res.status(404).json({ message: 'Not found' });
-});
-
+// Export for Vercel
 module.exports = app;
