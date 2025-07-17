@@ -3,6 +3,9 @@ import fs from 'node:fs/promises';
 import bodyParser from 'body-parser';
 import express from 'express';
 
+import path from 'path';
+import { fileURLToPath } from 'url';
+
 const app = express();
 
 app.use(bodyParser.json());
@@ -16,8 +19,16 @@ app.use((req, res, next) => {
 });
 
 app.get('/meals', async (req, res) => {
-  const meals = await fs.readFile('./data/available-meals.json', 'utf8');
-  res.json(JSON.parse(meals));
+
+
+// Needed if using ES modules (you are, since you're using "type": "module")
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+
+  const filePath = path.resolve(__dirname, 'data', 'available-meals.json');
+  const data = await fs.readFile(filePath, 'utf8');
+
+  res.json(JSON.parse(data));
 });
 
 app.post('/orders', async (req, res) => {
